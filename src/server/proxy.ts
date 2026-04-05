@@ -58,6 +58,14 @@ async function handleRequest(
     return;
   }
 
+  if (req.method === 'GET' && endpoint === '/v1/stats') {
+    const s = await audit.stats();
+    res.statusCode = 200;
+    res.setHeader('content-type', 'application/json');
+    res.end(JSON.stringify(s));
+    return;
+  }
+
   if (req.method !== 'POST') {
     res.statusCode = 405;
     res.setHeader('content-type', 'application/json');

@@ -4,6 +4,7 @@ export interface AuditLog {
   init(): Promise<void>;
   record(event: AuditEvent): Promise<void>;
   list(opts: { limit: number }): Promise<AuditEvent[]>;
+  stats(): Promise<{ local_count: number; cloud_count: number; blocked_count: number }>;
 }
 
 /**
@@ -80,6 +81,24 @@ export class SqliteCliAuditLog implements AuditLog {
         blocked: Number(blocked || '0'),
       }));
     }
+  }
+
+  async stats(): Promise<{ local_count: number; cloud_count: number; blocked_count: number }> {
+    const sql = `SELECT
+      SUM(CASE WHEN provider = 'ollama' THEN 1 ELSE 0 END) AS local_count,
+      SUM(CASE WHEN provider = 'cloud' THEN 1 ELSE 0 END) AS cloud_count,
+      SUM(CASE WHEN blocked = 1 THEN 1 ELSE 0 END) AS blocked_count
+    FROM audit_events;`;
+
+    const { stdout } = await this.execSql(sql);
+    const line = stdout.trim();
+    if (!line) return { local_count: 0, cloud_count: 0, blocked_count: 0 };
+    const [local, cloud, blocked] = line.split('|');
+    return {
+      local_count: Number(local || '0'),
+      cloud_count: Number(cloud || '0'),
+      blocked_count: Number(blocked || '0'),
+    };
   }
 }
 
