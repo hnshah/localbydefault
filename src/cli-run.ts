@@ -2,16 +2,19 @@ import { createOrchestrator } from "./core/orchestrator.js";
 
 export async function runCommand(
   prompt: string,
-  _options: { model?: string; provider?: string; fast?: boolean }
+  options: { model?: string; provider?: string; quality?: "fast" | "best" }
 ): Promise<void> {
   const orchestrator = createOrchestrator();
 
   const task = {
     prompt,
     modality: "text" as const,
+    hints: options.quality ? { quality: options.quality } : undefined,
   };
 
   console.log("Routing task...");
+  if (options.quality) console.log(`Quality mode: ${options.quality}`);
+
   const decision = await orchestrator.route(task);
 
   console.log(`\nRoute decision:`);

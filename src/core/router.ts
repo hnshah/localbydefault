@@ -32,6 +32,18 @@ export class Router {
       throw new Error(`No model available for modality: ${task.modality}`);
     }
 
+    // Apply quality hint
+    let candidates = available;
+    if (task.hints?.quality === "fast") {
+      // Prefer smaller, faster local models
+      candidates = available.filter((m) => m.id.includes(":7b") || m.id.includes(":14b"));
+      if (candidates.length === 0) candidates = available.filter((m) => m.provider === "ollama");
+    } else if (task.hints?.quality === "best") {
+      // Prefer larger, smarter models
+      candidates = available.filter((m) => m.id.includes(":72b") || m.id.includes(":90b"));
+      if (candidates.length === 0) candidates = available;
+    }
+
     // Sort by policy
     let sorted: ModelSpec[];
     let reason: string;
@@ -39,26 +51,30 @@ export class Router {
     switch (this.config.policy) {
       case "local-first":
         sorted = [
-          ...available.filter((m) => m.provider === "ollama"),
-          ...available.filter((m) => m.provider !== "ollama"),
+          ...candidates.filter((m) => m.provider === "ollama"),
+          ...candidates.filter((m) => m.provider !== "ollama"),
         ];
-        reason = "Local model (local-first)";
+        reason = task.hints?.quality === "fast" 
+          ? "Fast local model (fast mode)"
+          : task.hints?.quality === "best"
+          ? "Best quality (best mode)"
+          : "Local model (local-first)";
         break;
       case "cloud-first":
         sorted = [
-          ...available.filter((m) => m.provider !== "ollama"),
-          ...available.filter((m) => m.provider === "ollama"),
+          ...candidates.filter((m) => m.provider !== "ollama"),
+          ...candidates.filter((m) => m.provider === "ollama"),
         ];
         reason = "Cloud model (cloud-first)";
         break;
       case "best-quality":
-        sorted = [...available].sort(
+        sorted = [...candidates].sort(
           (a, b) => b.costPer1MTokensUsd - a.costPer1MTokensUsd
         );
         reason = "Best quality (best-quality)";
         break;
       default:
-        sorted = available;
+        sorted = candidates;
         reason = "Default selection";
     }
 

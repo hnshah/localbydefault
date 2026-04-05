@@ -8,7 +8,8 @@ const { values, positionals } = parseArgs({
   options: {
     model: { type: "string", short: "m" },
     provider: { type: "string", short: "p" },
-    fast: { type: "boolean", default: false },
+    fast: { type: "boolean", short: "f", default: false },
+    best: { type: "boolean", short: "b", default: false },
   },
   allowPositionals: true,
 });
@@ -31,15 +32,19 @@ Commands:
 Options:
   --model, -m <model>     Specify model to use
   --provider, -p <prov>   Specify provider (ollama, openai)
-  --fast                  Prefer fastest model
+  --fast, -f              Prefer fastest model
+  --best, -b              Prefer best quality model
 
 Examples:
   localbydefault route "write a function"
   localbydefault run "hello world"
-  localbydefault config
-  localbydefault init`);
+  localbydefault run --fast "simple greeting"
+  localbydefault run --best "complex analysis"
+  localbydefault config`);
     process.exit(1);
   }
+
+  const quality = values.fast ? "fast" : values.best ? "best" : undefined;
 
   switch (command) {
     case "route": {
@@ -51,6 +56,7 @@ Examples:
       await routeCommand(prompt, {
         model: values.model,
         provider: values.provider,
+        quality,
       });
       break;
     }
@@ -63,7 +69,7 @@ Examples:
       await runCommand(prompt, {
         model: values.model,
         provider: values.provider,
-        fast: values.fast,
+        quality,
       });
       break;
     }
