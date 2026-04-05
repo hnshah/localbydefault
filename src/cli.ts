@@ -6,6 +6,8 @@ import { initCommand, configCommand } from "./cli-config.js";
 import { healthCommand } from "./cli-health.js";
 import { evaluateCommand } from "./cli-evaluate.js";
 import { metricsCommand } from "./cli-metrics.js";
+import { statsCommand } from "./cli-stats.js";
+import { compareCommand } from "./cli-compare.js";
 
 const { values, positionals } = parseArgs({
   options: {
@@ -34,15 +36,17 @@ Commands:
   route <prompt>     Show routing decision for prompt
   run <prompt>       Route and execute prompt
   evaluate           Run evaluation tasks
+  compare            Compare routing strategies
   health             Check provider health
   metrics            Show execution metrics
+  stats              Show routing statistics
   init               Create default config file
   config             Show current configuration
 
 Options:
   --model, -m <model>     Specify model to use
-  --provider, -p <prov>   Specify provider (ollama, openai)
-  --fast, -f              Prefer fastest model
+  --provider, -p <prov>   Specify provider (ollama, openai, anthropic, openrouter)
+  --fast, -f              Prefer fastest/smallest model
   --best, -b              Prefer best quality model
   --count, -c <n>         Number of eval tasks (default: 5)
   --policy <policy>       Routing policy (local-first, cloud-first, best-quality)
@@ -52,9 +56,9 @@ Options:
 Examples:
   localbydefault route "write a function"
   localbydefault run "hello world"
+  localbydefault run --fast "simple greeting"
   localbydefault evaluate --count 10
-  localbydefault metrics --summary
-  localbydefault metrics --recent 20
+  localbydefault compare
   localbydefault health
   localbydefault config`);
     process.exit(1);
@@ -89,6 +93,10 @@ Examples:
       });
       break;
     }
+    case "compare": {
+      await compareCommand();
+      break;
+    }
     case "health": {
       await healthCommand();
       break;
@@ -98,6 +106,10 @@ Examples:
         recent: values.recent ? parseInt(values.recent, 10) : undefined,
         summary: values.summary,
       });
+      break;
+    }
+    case "stats": {
+      await statsCommand();
       break;
     }
     case "init": {
