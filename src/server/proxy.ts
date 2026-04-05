@@ -45,6 +45,19 @@ async function handleRequest(
   logger: Pick<Console, 'warn' | 'error' | 'log'>,
 ) {
   const endpoint = req.url ?? '/';
+
+  // Read-only endpoints
+  if (req.method === 'GET' && endpoint.startsWith('/v1/audit')) {
+    // NOTE: list() is best-effort across implementations; if not implemented, return empty.
+    const url = new URL(endpoint, 'http://localhost');
+    const limit = Math.min(parseInt(url.searchParams.get('limit') ?? '200', 10) || 200, 2000);
+    const rows = await audit.list({ limit });
+    res.statusCode = 200;
+    res.setHeader('content-type', 'application/json');
+    res.end(JSON.stringify(rows));
+    return;
+  }
+
   if (req.method !== 'POST') {
     res.statusCode = 405;
     res.setHeader('content-type', 'application/json');

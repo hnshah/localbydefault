@@ -3,6 +3,7 @@ import type { AuditEvent } from './types.js';
 export interface AuditLog {
   init(): Promise<void>;
   record(event: AuditEvent): Promise<void>;
+  list(opts: { limit: number }): Promise<AuditEvent[]>;
 }
 
 /**
@@ -34,6 +35,51 @@ export class SqliteCliAuditLog implements AuditLog {
       `INSERT INTO audit_events (ts, kind, endpoint, provider, cloud_policy, blocked) VALUES (` +
       `${q(event.ts)}, ${q(event.kind)}, ${q(event.endpoint)}, ${q(event.provider)}, ${q(event.cloudPolicy)}, ${event.blocked});`;
     await this.execSql(sql);
+  }
+
+  async list(opts: { limit: number }): Promise<AuditEvent[]> {
+    const limit = Math.max(1, Math.min(opts.limit, 2000));
+    // Return as JSON array via sqlite3's json1 extension. If json1 isn't available,
+    // we fall back to TSV parsing (best-effort).
+    const sql = `SELECT json_group_array(json_object(
+      'ts', ts,
+      'kind', kind,
+      'endpoint', endpoint,
+      'provider', provider,
+      'cloudPolicy', cloud_policy,
+      'blocked', blocked
+    )) FROM (
+      SELECT ts, kind, endpoint, provider, cloud_policy, blocked
+      FROM audit_events
+      ORDER BY id DESC
+      LIMIT ${limit}
+    );`;
+
+    try {
+      const { stdout } = await this.execSql(sql);
+      const trimmed = stdout.trim();
+      if (!trimmed) return [];
+      const parsed = JSON.parse(trimmed);
+      return Array.isArray(parsed) ? (parsed as AuditEvent[]) : [];
+    } catch {
+      // Fallback: TSV
+      const { stdout } = await this.execSql(
+        `SELECT ts, kind, endpoint, provider, cloud_policy, blocked FROM audit_events ORDER BY id DESC LIMIT ${limit};`,
+      );
+      const rows = stdout
+        .split('\n')
+        .map((l) => l.trim())
+        .filter(Boolean)
+        .map((l) => l.split('|'));
+      return rows.map(([ts, kind, endpoint, provider, cloud_policy, blocked]) => ({
+        ts,
+        kind,
+        endpoint,
+        provider,
+        cloudPolicy: cloud_policy,
+        blocked: Number(blocked || '0'),
+      }));
+    }
   }
 }
 
