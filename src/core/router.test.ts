@@ -19,7 +19,21 @@ describe('Router (local-first policy)', () => {
   });
 
   it('throws if no models support the task modality', () => {
-    const router = new Router({ providers: ['ollama'], policy: 'local-first' });
-    expect(() => router.route({ prompt: 'audio', modality: 'vision' })).toThrow(/No model available/);
+    const router = new Router({
+      providers: ['ollama'],
+      policy: 'local-first',
+      config: {
+        models: [
+          {
+            id: 'qwen2.5-coder:32b',
+            provider: 'ollama',
+            modalities: ['text'],
+            costPer1MTokensUsd: 0,
+          },
+        ],
+      } as any,
+    });
+
+    expect(() => router.route({ prompt: 'need vision', modality: 'vision' })).toThrow(/No model available/);
   });
 });
