@@ -11,6 +11,7 @@ import { compareCommand } from "./cli-compare.js";
 import { startApi } from "./cli-api.js";
 import { startMcpServer } from "./cli-mcp.js";
 import { startTui } from "./cli-tui.js";
+import { startWebhookServer } from "./cli-webhook.js";
 
 const { values, positionals } = parseArgs({
   options: {
@@ -59,7 +60,7 @@ Options:
   --best, -b              Prefer best quality
   --count, -c <n>          Eval task count
   --policy <policy>        Routing policy
-  --port, -P <port>        API port (default: 3000)
+  --port, -P <port>        API/webhook port (default: 3000/3001)
   --socket, -S <path>      MCP socket path
 
 Examples:
@@ -67,9 +68,8 @@ Examples:
   localbydefault run "hello world"
   localbydefault tui
   localbydefault serve --port 3000
-  localbydefault mcp --socket /tmp/mcp.sock
-  localbydefault compare
-  localbydefault health`);
+  localbydefault webhook --port 3001
+  localbydefault mcp --socket /tmp/mcp.sock`);
     process.exit(1);
   }
 
@@ -104,6 +104,10 @@ Examples:
     }
     case "tui": {
       await startTui();
+      break;
+    }
+    case "webhook": {
+      await startWebhookServer({ port: values.port ? parseInt(values.port, 10) : 3001 });
       break;
     }
     case "evaluate": {
