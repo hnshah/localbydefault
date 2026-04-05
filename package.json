@@ -1,0 +1,39 @@
+{
+  "name": "localbydefault",
+  "version": "1.0.0",
+  "description": "Local-first model orchestration: run local by default, fall back to cloud when needed.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "bin": {
+    "localbydefault": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx src/cli.ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hnshah/localbydefault.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/hnshah/localbydefault/issues"
+  },
+  "homepage": "https://github.com/hnshah/localbydefault#readme",
+  "dependencies": {
+    "chalk": "^5.6.2",
+    "commander": "^14.0.3",
+    "yaml": "^2.8.3",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.2",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.2",
+    "vitest": "^4.1.2"
+  }
+}

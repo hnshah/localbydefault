@@ -1,0 +1,50 @@
+import { describe, expect, it } from 'vitest';
+import { Router } from './router.js';
+import type { ModelSpec, Task } from './types.js';
+
+const MODELS: ModelSpec[] = [
+  {
+    id: 'qwen2.5-coder:32b',
+    provider: 'ollama',
+    modalities: ['text'],
+    costPer1MTokensUsd: 0,
+  },
+  {
+    id: 'gpt-4.1-mini',
+    provider: 'openai_compatible',
+    modalities: ['text'],
+    costPer1MTokensUsd: 0.15,
+  },
+  {
+    id: 'llama3.2-vision:90b',
+    provider: 'ollama',
+    modalities: ['vision'],
+    costPer1MTokensUsd: 0,
+  },
+];
+
+describe('Router (local-first policy)', () => {
+  it('routes text tasks to a local model when available', () => {
+    const router = new Router(MODELS, { localFirst: true });
+    const task: Task = { prompt: 'write a function', modality: 'text' };
+    const decision = router.route(task);
+    expect(decision.modelId).toBe('qwen2.5-coder:32b');
+    expect(decision.reason).toContain('local-first');
+  });
+
+  it('routes vision tasks to a vision-capable local model', () => {
+    const router = new Router(MODELS, { localFirst: true });
+    const task: Task = { prompt: 'analyze this screenshot', modality: 'vision' };
+    const decision = router.route(task);
+    expect(decision.modelId).toBe('llama3.2-vision:90b');
+  });
+
+  it('throws if no models support the task modality', () => {
+    const router = new Router(MODELS, { localFirst: true });
+    expect(() => router.route({ prompt: 'audio', modality: 'text' })).not.toThrow();
+    expect(() => router.route({ prompt: 'audio', modality: 'vision' })).not.toThrow();
+
+    const routerNoVision = new Router(MODELS.filter(m => m.modalities[0] !== 'vision'), { localFirst: true });
+    expect(() => routerNoVision.route({ prompt: 'need vision', modality: 'vision' })).toThrow(/No models support modality/);
+  });
+});
