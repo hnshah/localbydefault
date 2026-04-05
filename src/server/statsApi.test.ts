@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { createProxyServer } from "./proxy.js";
-import type { ProxyConfig } from "./types.js";
+import type { ServerConfig } from "./types.js";
 import { SqliteCliAuditLog, makeSqliteCliExec } from "./audit.js";
 
-async function startServer(cfg: ProxyConfig) {
+async function startServer(cfg: ServerConfig) {
   const audit = new SqliteCliAuditLog(cfg.auditDbPath, makeSqliteCliExec(cfg.auditDbPath));
   await audit.init();
   const server = createProxyServer(cfg, { audit });
@@ -15,7 +15,7 @@ async function startServer(cfg: ProxyConfig) {
 
 describe("GET /v1/stats", () => {
   it("returns counters", async () => {
-    const cfg: ProxyConfig = {
+    const cfg: ServerConfig = {
       port: 0,
       ollamaBaseUrl: "http://localhost:11434",
       cloudPolicy: "warn",
@@ -31,6 +31,8 @@ describe("GET /v1/stats", () => {
       expect(body).toHaveProperty("local_count");
       expect(body).toHaveProperty("cloud_count");
       expect(body).toHaveProperty("blocked_count");
+      expect(body).toHaveProperty("by_reason");
+      expect(Array.isArray(body.by_reason)).toBe(true);
     } finally {
       server.close();
     }

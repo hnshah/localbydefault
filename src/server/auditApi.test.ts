@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { createProxyServer } from "./proxy.js";
-import type { ProxyConfig } from "./types.js";
+import type { ServerConfig } from "./types.js";
 
-async function startServer(cfg: ProxyConfig) {
+async function startServer(cfg: ServerConfig) {
   // proxy requires explicit deps
   const { SqliteCliAuditLog, makeSqliteCliExec } = await import("./audit.js");
   const audit = new SqliteCliAuditLog(cfg.auditDbPath, makeSqliteCliExec(cfg.auditDbPath));
@@ -16,7 +16,7 @@ async function startServer(cfg: ProxyConfig) {
 
 describe("GET /v1/audit", () => {
   it("returns json array of audit events", async () => {
-    const cfg: ProxyConfig = {
+    const cfg: ServerConfig = {
       port: 0,
       ollamaBaseUrl: "http://localhost:11434",
       cloudPolicy: "warn",

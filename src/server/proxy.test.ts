@@ -9,6 +9,19 @@ class MemoryAudit {
   async record(ev: AuditEvent) {
     this.events.push(ev);
   }
+  async list({ limit }: { limit: number }) {
+    return this.events.slice(-limit).reverse();
+  }
+  async stats() {
+    return {
+      local_count: this.events.filter((e) => e.provider === 'ollama').length,
+      cloud_count: this.events.filter((e) => e.provider === 'cloud').length,
+      blocked_count: this.events.filter((e) => e.blocked === 1).length,
+    };
+  }
+  async statsByReason() {
+    return [] as Array<{ reason: string; count: number }>;
+  }
 }
 
 function startServer(cfg: ServerConfig, audit: MemoryAudit, fetchImpl: typeof fetch) {

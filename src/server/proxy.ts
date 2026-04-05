@@ -60,9 +60,10 @@ async function handleRequest(
 
   if (req.method === 'GET' && endpoint === '/v1/stats') {
     const s = await audit.stats();
+    const byReason = await audit.statsByReason(50);
     res.statusCode = 200;
     res.setHeader('content-type', 'application/json');
-    res.end(JSON.stringify(s));
+    res.end(JSON.stringify({ ...s, by_reason: byReason }));
     return;
   }
 
@@ -120,6 +121,7 @@ async function forwardToOllama(
     provider: 'ollama',
     cloudPolicy: cfg.cloudPolicy,
     blocked: 0,
+    reason: 'local_forwarded',
   });
 
   res.statusCode = upstream.status;
@@ -149,6 +151,11 @@ async function forwardToCloud(
     provider: 'cloud',
     cloudPolicy: policy,
     blocked: blocked ? 1 : 0,
+    reason: blocked
+      ? 'cloud_policy_denied'
+      : policy === 'warn'
+        ? 'cloud_policy_warn_allowed'
+        : 'cloud_policy_allow',
   });
 
   if (blocked) {
@@ -158,7 +165,19 @@ async function forwardToCloud(
     return;
   }
   if (decision.warning) logger.warn(decision.warning);
-  if (!cfg.cloudBaseUrl) throw new CloudPolicyError('cloud_base_url is not configured');
+  if (!cfg.cloudBaseUrl) {
+    // Record as an error so audit explains why cloud attempt failed.
+    await audit.record({
+      ts: nowIso(),
+      kind: 'request',
+      endpoint,
+      provider: 'cloud',
+      cloudPolicy: policy,
+      blocked: 0,
+      reason: 'cloud_base_url_missing',
+    });
+    throw new CloudPolicyError('cloud_base_url is not configured');
+  }
 
   const upstream = await fetchImpl(new URL(endpoint.replace('/v1/cloud', ''), cfg.cloudBaseUrl), {
     method: 'POST',

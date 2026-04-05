@@ -20,5 +20,14 @@ export interface AuditEvent {
   provider: 'ollama' | 'cloud';
   cloudPolicy: CloudPolicy;
   blocked: 0 | 1;
+  reason: AuditReason;
 }
 
+export type AuditReason =
+  | 'local_forwarded'
+  | 'cloud_policy_warn_allowed'
+  | 'cloud_policy_allow'
+  | 'cloud_policy_denied'
+  | 'cloud_base_url_missing'
+  | 'upstream_error'
+  | 'bad_request';
