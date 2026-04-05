@@ -1,83 +1,70 @@
 # localbydefault Roadmap
 
-## Current Status: v0.4 Complete ✅
+## Current Status: v0.5 Complete ✅
 
 ### What's Working
-- [x] **4 Providers**: Ollama, OpenAI, Anthropic, OpenRouter
-- [x] **Local-first routing** with free local models
-- [x] **Quality hints** (--fast, --best)
-- [x] **Health checks**
-- [x] **Config file system**
-- [x] **Metrics logging**
-- [x] **SmartRouter** with adaptive routing
-- [x] **Compare command** for benchmarking
 
-### Full CLI
-```bash
-localbydefault route "hello"           # Show routing
-localbydefault run "hello"            # Execute
-localbydefault run --fast "..."      # Fast mode
-localbydefault run --best "..."       # Best quality
-localbydefault health                 # Check providers
-localbydefault config                 # Show config
-localbydefault init                   # Create config
-localbydefault evaluate --count 10     # Run evals
-localbydefault metrics --summary      # Show metrics
-localbydefault compare                # Benchmark policies
-localbydefault stats                  # Show statistics
-```
+**Providers:**
+- [x] Ollama (local, free)
+- [x] OpenAI (cloud)
+- [x] Anthropic (cloud)
+- [x] OpenRouter (multi-provider)
 
----
+**CLI Commands:**
+- [x] `route <prompt>` - Show routing decision
+- [x] `run <prompt>` - Execute
+- [x] `serve` - REST API server
+- [x] `mcp` - MCP server
+- [x] `tui` - Interactive TUI
+- [x] `webhook` - Webhook receiver
+- [x] `evaluate` - Run evals
+- [x] `compare` - Compare policies
+- [x] `health` - Provider health
+- [x] `metrics` - Execution metrics
 
-## v0.5: Agent Integration
-
-### Goals
-- [ ] **OpenClaw adapter** - Use localbydefault from OpenClaw
-- [ ] **MCP server** - Model Context Protocol server
-- [ ] **REST API** - HTTP endpoints for routing decisions
-- [ ] **Webhook support** - Callbacks on routing events
+**Integrations:**
+- [x] REST API (port 3000)
+- [x] MCP Server (Unix socket)
+- [x] Webhooks (event callbacks)
+- [x] OpenClaw adapter
+- [x] OpenClaw skill
 
 ---
 
 ## Future Ideas
 
-### Plugin System
-- [ ] Custom provider plugins
-- [ ] Routing policy plugins
-- [ ] Webhook integrations
-
-### Learning
+### Learning & Optimization
 - [ ] Success-rate based model ranking
 - [ ] Latency prediction
 - [ ] Cost optimization
 
+### More Providers
+- [ ] Azure OpenAI
+- [ ] AWS Bedrock
+- [ ] Google Vertex AI
+
 ### UI
 - [ ] Web dashboard
-- [ ] Real-time routing visualization
-- [ ] Cost tracking dashboard
+- [x] TUI (done)
+
+### Plugins
+- [ ] Custom provider plugins
+- [ ] Routing policy plugins
 
 ---
 
-## Commit History
+## Commit History (v0.5)
 
-| Hash | Version | Description |
-|------|---------|-------------|
-| 81a2cb4 | v0.4 | SmartRouter + compare command |
-| cd21986 | v0.3 | Anthropic + OpenRouter providers |
-| 12592bf | v0.2 | Metrics logging + CLI |
-| 12b39d9 | v0.2 | Evaluate command + Verdict integration |
-| faf56e0 | v0.1 | Health checks |
-| c86b2c6 | v0.1 | Quality hints routing |
-| b89c629 | v0.1 | OpenAI provider + config |
-| 7521865 | v0.1 | Ollama provider + run/route |
-
----
-
-## Dependencies
-
-- **Verdict** - Evaluation framework
-- **OpenClaw** - Agent integration (planned)
-- **Ollama** - Local inference
-- **OpenAI API** - Cloud inference
-- **Anthropic** - Claude API
-- **OpenRouter** - Multi-provider API
+| Hash | Description |
+|------|-------------|
+| e8548a2 | OpenClaw adapter, webhooks, TUI |
+| 6979b25 | README v0.5 |
+| 6f234d7 | MCP server |
+| ef718ca | REST API server |
+| 81a2cb4 | SmartRouter + compare |
+| cd21986 | Anthropic + OpenRouter |
+| 12592bf | Metrics logging |
+| 12b39d9 | Evaluate command |
+| faf56e0 | Health checks |
+| b89c629 | OpenAI + config |
+| 7521865 | Ollama provider |
