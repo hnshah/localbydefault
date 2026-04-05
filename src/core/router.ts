@@ -35,13 +35,26 @@ export class Router {
     // Apply quality hint
     let candidates = available;
     if (task.hints?.quality === "fast") {
-      // Prefer smaller, faster local models
-      candidates = available.filter((m) => m.id.includes(":7b") || m.id.includes(":14b"));
+      candidates = available.filter((m) => m.id.includes(":7b") || m.id.includes(":14b") || m.id.includes("haiku"));
       if (candidates.length === 0) candidates = available.filter((m) => m.provider === "ollama");
     } else if (task.hints?.quality === "best") {
-      // Prefer larger, smarter models
-      candidates = available.filter((m) => m.id.includes(":72b") || m.id.includes(":90b"));
+      candidates = available.filter((m) => 
+        m.id.includes(":72b") || m.id.includes(":90b") || 
+        m.id.includes("opus") || m.id.includes("gpt-4o") ||
+        m.id.includes("claude-3-opus")
+      );
       if (candidates.length === 0) candidates = available;
+    }
+
+    // Apply latency hint
+    if (task.hints?.maxLatencyMs) {
+      // Filter out models that are known to be slow (rough heuristic)
+      const slowProviders: ProviderId[] = ["anthropic"];
+      if (this.config.policy === "local-first") {
+        candidates = candidates.filter((m) => 
+          m.provider !== "anthropic" || m.costPer1MTokensUsd === 0
+        );
+      }
     }
 
     // Sort by policy
@@ -52,25 +65,22 @@ export class Router {
       case "local-first":
         sorted = [
           ...candidates.filter((m) => m.provider === "ollama"),
-          ...candidates.filter((m) => m.provider !== "ollama"),
+          ...candidates.filter((m) => m.provider === "openrouter" && m.costPer1MTokensUsd === 0),
+          ...candidates.filter((m) => m.provider === "openai_compatible"),
+          ...candidates.filter((m) => m.provider === "anthropic"),
         ];
         reason = task.hints?.quality === "fast" 
-          ? "Fast local model (fast mode)"
+          ? "Fast local model"
           : task.hints?.quality === "best"
-          ? "Best quality (best mode)"
+          ? "Best quality (local-first)"
           : "Local model (local-first)";
         break;
       case "cloud-first":
-        sorted = [
-          ...candidates.filter((m) => m.provider !== "ollama"),
-          ...candidates.filter((m) => m.provider === "ollama"),
-        ];
+        sorted = [...candidates].sort((a, b) => a.costPer1MTokensUsd - b.costPer1MTokensUsd);
         reason = "Cloud model (cloud-first)";
         break;
       case "best-quality":
-        sorted = [...candidates].sort(
-          (a, b) => b.costPer1MTokensUsd - a.costPer1MTokensUsd
-        );
+        sorted = [...candidates].sort((a, b) => b.costPer1MTokensUsd - a.costPer1MTokensUsd);
         reason = "Best quality (best-quality)";
         break;
       default:

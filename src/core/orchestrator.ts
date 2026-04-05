@@ -1,7 +1,9 @@
-import type { Task, RouteDecision, Provider, ChatMessage } from "./types.js";
+import type { Task, RouteDecision, Provider, ChatMessage, ProviderId } from "./types.js";
 import { Router } from "./router.js";
 import { OllamaProvider } from "../providers/ollama.js";
 import { OpenAIProvider } from "../providers/openai.js";
+import { AnthropicProvider } from "../providers/anthropic.js";
+import { OpenRouterProvider } from "../providers/openrouter.js";
 import { getMetricsLogger, type HealthStatus } from "./metrics.js";
 import { checkAllProviders } from "./health.js";
 
@@ -9,6 +11,10 @@ export interface OrchestratorConfig {
   policy?: "local-first" | "cloud-first" | "best-quality";
   openaiApiKey?: string;
   openaiModel?: string;
+  anthropicApiKey?: string;
+  anthropicModel?: string;
+  openrouterApiKey?: string;
+  openrouterModel?: string;
   enableMetrics?: boolean;
 }
 
@@ -20,9 +26,10 @@ export class LocalOrchestrator {
   constructor(config: OrchestratorConfig = {}) {
     this.enableMetrics = config.enableMetrics ?? true;
 
-    const ollama = new OllamaProvider();
-    this.providers.set("ollama", ollama);
+    // Always add Ollama
+    this.providers.set("ollama", new OllamaProvider());
 
+    // Add OpenAI if available
     if (config.openaiApiKey || process.env.OPENAI_API_KEY) {
       const openai = new OpenAIProvider({
         apiKey: config.openaiApiKey ?? process.env.OPENAI_API_KEY,
@@ -31,7 +38,25 @@ export class LocalOrchestrator {
       this.providers.set("openai_compatible", openai);
     }
 
-    const providerIds = Array.from(this.providers.keys()) as ("ollama" | "openai_compatible")[];
+    // Add Anthropic if available
+    if (config.anthropicApiKey || process.env.ANTHROPIC_API_KEY) {
+      const anthropic = new AnthropicProvider({
+        apiKey: config.anthropicApiKey ?? process.env.ANTHROPIC_API_KEY,
+        defaultModel: config.anthropicModel,
+      });
+      this.providers.set("anthropic", anthropic);
+    }
+
+    // Add OpenRouter if available
+    if (config.openrouterApiKey || process.env.OPENROUTER_API_KEY) {
+      const openrouter = new OpenRouterProvider({
+        apiKey: config.openrouterApiKey ?? process.env.OPENROUTER_API_KEY,
+        defaultModel: config.openrouterModel,
+      });
+      this.providers.set("openrouter", openrouter);
+    }
+
+    const providerIds = Array.from(this.providers.keys()) as ProviderId[];
     this.router = new Router({
       providers: providerIds,
       policy: config.policy ?? "local-first",
@@ -88,21 +113,32 @@ export class LocalOrchestrator {
         });
       }
 
-      if (decision.provider === "ollama" && this.providers.has("openai_compatible")) {
-        console.log("Ollama unavailable, falling back to OpenAI...");
-        const cloudProvider = this.providers.get("openai_compatible")!;
-        const cloudResult = await cloudProvider.chat("gpt-4o-mini", messages);
-        return {
-          response: cloudResult.message.content,
-          decision: {
-            ...decision,
-            modelId: "gpt-4o-mini",
-            provider: "openai_compatible",
-            reason: "Cloud fallback (Ollama unavailable)",
-          },
-          latencyMs: cloudResult.latencyMs,
-        };
+      // Try fallback providers
+      const fallbackOrder: ProviderId[] = ["ollama", "openai_compatible", "anthropic", "openrouter"];
+      const currentIdx = fallbackOrder.indexOf(decision.provider);
+
+      for (let i = currentIdx + 1; i < fallbackOrder.length; i++) {
+        const fallback = fallbackOrder[i];
+        if (this.providers.has(fallback)) {
+          console.log(`${decision.provider} failed, falling back to ${fallback}...`);
+          const fallbackProvider = this.providers.get(fallback)!;
+          try {
+            const fallbackResult = await fallbackProvider.chat(decision.modelId, messages);
+            return {
+              response: fallbackResult.message.content,
+              decision: {
+                ...decision,
+                provider: fallback,
+                reason: `Fallback from ${decision.provider}`,
+              },
+              latencyMs: fallbackResult.latencyMs,
+            };
+          } catch {
+            continue;
+          }
+        }
       }
+
       throw error;
     }
   }
@@ -111,8 +147,11 @@ export class LocalOrchestrator {
     return checkAllProviders(this.providers);
   }
 
-  listProviders(): string[] {
-    return Array.from(this.providers.keys());
+  listProviders(): Array<{ id: string; available: boolean }> {
+    return Array.from(this.providers.entries()).map(([id, p]) => ({
+      id,
+      available: p.isAvailable(),
+    }));
   }
 }
 

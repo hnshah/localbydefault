@@ -1,43 +1,12 @@
 {
   "models": [
-    {
-      "id": "qwen2.5-coder:32b",
-      "provider": "ollama",
-      "modalities": [
-        "text"
-      ],
-      "costPer1MTokensUsd": 0,
-      "enabled": true
-    },
-    {
-      "id": "qwen2.5:32b",
-      "provider": "ollama",
-      "modalities": [
-        "text"
-      ],
-      "costPer1MTokensUsd": 0,
-      "enabled": true
-    },
-    {
-      "id": "llama3.2-vision:90b",
-      "provider": "ollama",
-      "modalities": [
-        "text",
-        "vision"
-      ],
-      "costPer1MTokensUsd": 0,
-      "enabled": true
-    },
-    {
-      "id": "gpt-4o-mini",
-      "provider": "openai_compatible",
-      "modalities": [
-        "text",
-        "vision"
-      ],
-      "costPer1MTokensUsd": 0.15,
-      "enabled": false
-    }
+    { "id": "qwen2.5-coder:32b", "provider": "ollama", "modalities": ["text"], "costPer1MTokensUsd": 0, "enabled": true },
+    { "id": "qwen2.5:32b", "provider": "ollama", "modalities": ["text"], "costPer1MTokensUsd": 0, "enabled": true },
+    { "id": "llama3.2-vision:90b", "provider": "ollama", "modalities": ["text", "vision"], "costPer1MTokensUsd": 0, "enabled": true },
+    { "id": "qwen2.5-coder:7b", "provider": "ollama", "modalities": ["text"], "costPer1MTokensUsd": 0, "enabled": true },
+    { "id": "gpt-4o-mini", "provider": "openai_compatible", "modalities": ["text", "vision"], "costPer1MTokensUsd": 0.15, "enabled": false },
+    { "id": "claude-3-haiku-4-20250514", "provider": "anthropic", "modalities": ["text", "vision"], "costPer1MTokensUsd": 0.8, "enabled": false },
+    { "id": "openai/gpt-4o-mini", "provider": "openrouter", "modalities": ["text"], "costPer1MTokensUsd": 0.15, "enabled": false }
   ],
   "defaultPolicy": "local-first"
 }

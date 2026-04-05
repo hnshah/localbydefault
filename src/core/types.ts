@@ -1,12 +1,12 @@
 export type Modality = 'text' | 'vision';
 
-export type ProviderId = 'ollama' | 'openai_compatible';
+export type ProviderId = 'ollama' | 'openai_compatible' | 'anthropic' | 'openrouter';
 
 export interface ModelSpec {
-  id: string;               // e.g. qwen2.5-coder:32b
+  id: string;
   provider: ProviderId;
-  modalities: Modality[];   // text / vision
-  costPer1MTokensUsd: number; // 0 for local
+  modalities: Modality[];
+  costPer1MTokensUsd: number;
   notes?: string;
 }
 
@@ -24,6 +24,7 @@ export interface RouteDecision {
   provider: ProviderId;
   reason: string;
   alternatives: Array<{ modelId: string; provider: ProviderId; reason: string }>;
+  hint?: string;
 }
 
 export interface ChatMessage {

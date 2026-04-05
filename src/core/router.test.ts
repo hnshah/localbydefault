@@ -6,7 +6,7 @@ describe('Router (local-first policy)', () => {
     const router = new Router({ providers: ['ollama'], policy: 'local-first' });
     const decision = router.route({ prompt: 'write a function', modality: 'text' });
     expect(decision.modelId).toBe('qwen2.5-coder:32b');
-    expect(decision.reason).toContain('local-first');
+    expect(decision.reason).toContain('Local model');
   });
 
   it('routes vision tasks to a vision-capable local model', () => {
@@ -41,7 +41,7 @@ describe('Router (local-first policy)', () => {
       modality: 'text',
       hints: { quality: 'fast' }
     });
-    expect(decision.reason).toContain('fast');
+    expect(decision.reason.toLowerCase()).toContain('fast');
   });
 
   it('returns alternatives when multiple models exist', () => {
