@@ -10,6 +10,7 @@ import { statsCommand } from "./cli-stats.js";
 import { compareCommand } from "./cli-compare.js";
 import { startApi } from "./cli-api.js";
 import { startMcpServer } from "./cli-mcp.js";
+import { startTui } from "./cli-tui.js";
 
 const { values, positionals } = parseArgs({
   options: {
@@ -22,7 +23,7 @@ const { values, positionals } = parseArgs({
     recent: { type: "string", short: "n" },
     summary: { type: "boolean", short: "s", default: false },
     port: { type: "string", short: "P" },
-    socket: { type: "string", short: "s" },
+    socket: { type: "string", short: "S" },
   },
   allowPositionals: true,
 });
@@ -37,39 +38,38 @@ async function main() {
 Usage: localbydefault <command> [options]
 
 Commands:
-  route <prompt>     Show routing decision for prompt
-  run <prompt>       Route and execute prompt
-  serve              Start REST API server
-  mcp                Start MCP server (Model Context Protocol)
-  evaluate           Run evaluation tasks
-  compare            Compare routing strategies
-  health             Check provider health
-  metrics            Show execution metrics
-  stats              Show routing statistics
-  init               Create default config file
-  config             Show current configuration
+  route <prompt>     Show routing decision
+  run <prompt>      Route and execute
+  serve             Start REST API server
+  mcp               Start MCP server
+  tui               Start interactive TUI
+  webhook           Start webhook receiver
+  evaluate          Run evaluation tasks
+  compare           Compare routing strategies
+  health            Check provider health
+  metrics           Show execution metrics
+  stats             Show routing statistics
+  init              Create default config
+  config            Show configuration
 
 Options:
-  --model, -m <model>     Specify model to use
-  --provider, -p <prov>   Specify provider (ollama, openai, anthropic, openrouter)
-  --fast, -f              Prefer fastest/smallest model
-  --best, -b              Prefer best quality model
-  --count, -c <n>         Number of eval tasks (default: 5)
-  --policy <policy>       Routing policy (local-first, cloud-first, best-quality)
-  --recent, -n <n>        Show recent n executions
-  --summary, -s           Show summary stats
-  --port, -P <port>       API server port (default: 3000)
-  --socket, -S <path>     MCP socket path (default: /tmp/localbydefault-mcp.sock)
+  --model, -m <model>     Specify model
+  --provider, -p <prov>   Provider (ollama, openai, anthropic, openrouter)
+  --fast, -f              Prefer fastest
+  --best, -b              Prefer best quality
+  --count, -c <n>          Eval task count
+  --policy <policy>        Routing policy
+  --port, -P <port>        API port (default: 3000)
+  --socket, -S <path>      MCP socket path
 
 Examples:
   localbydefault route "write a function"
   localbydefault run "hello world"
+  localbydefault tui
   localbydefault serve --port 3000
   localbydefault mcp --socket /tmp/mcp.sock
-  localbydefault evaluate --count 10
   localbydefault compare
-  localbydefault health
-  localbydefault config`);
+  localbydefault health`);
     process.exit(1);
   }
 
@@ -100,6 +100,10 @@ Examples:
     }
     case "mcp": {
       await startMcpServer({ socketPath: values.socket });
+      break;
+    }
+    case "tui": {
+      await startTui();
       break;
     }
     case "evaluate": {
