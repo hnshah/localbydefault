@@ -25,3 +25,22 @@ export interface RouteDecision {
   reason: string;
   alternatives: Array<{ modelId: string; provider: ProviderId; reason: string }>;
 }
+
+export interface ChatMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+}
+
+export interface ChatResponse {
+  message: ChatMessage;
+  latencyMs: number;
+  tokens?: number;
+  cost: number;
+  provider: ProviderId;
+}
+
+export interface Provider {
+  id: ProviderId;
+  chat(model: string, messages: ChatMessage[]): Promise<ChatResponse>;
+  isAvailable(): boolean;
+}

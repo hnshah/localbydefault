@@ -1,57 +1,62 @@
-import { ModelSpec, RouteDecision, Task } from './types.js';
+import type { Task, RouteDecision, ModelSpec, ProviderId } from "./types.js";
 
 export interface RouterConfig {
-  localFirst: boolean;
-  cloudEscalationModelId?: string; // optional future
+  providers: ProviderId[];
+  policy: "local-first" | "cloud-first" | "best-quality";
 }
 
 export class Router {
-  constructor(
-    private readonly models: ModelSpec[],
-    private readonly cfg: RouterConfig = { localFirst: true },
-  ) {}
+  private config: RouterConfig;
+  private models: ModelSpec[] = [
+    { id: "qwen2.5-coder:32b", provider: "ollama", modalities: ["text"], costPer1MTokensUsd: 0 },
+    { id: "qwen2.5:32b", provider: "ollama", modalities: ["text"], costPer1MTokensUsd: 0 },
+    { id: "llama3.2-vision:90b", provider: "ollama", modalities: ["text", "vision"], costPer1MTokensUsd: 0 },
+    { id: "gpt-4.1-mini", provider: "openai_compatible", modalities: ["text"], costPer1MTokensUsd: 0.2 },
+  ];
+
+  constructor(config: RouterConfig) {
+    this.config = config;
+  }
 
   route(task: Task): RouteDecision {
-    const candidates = this.models.filter((m) => m.modalities.includes(task.modality));
-    if (candidates.length === 0) {
-      throw new Error(`No models support modality: ${task.modality}`);
+    const available = this.models.filter((m) => m.modalities.includes(task.modality));
+
+    if (available.length === 0) {
+      throw new Error(`No model available for modality: ${task.modality}`);
     }
 
-    const local = candidates.filter((m) => m.costPer1MTokensUsd === 0);
-    const cloud = candidates.filter((m) => m.costPer1MTokensUsd > 0);
+    // Simple routing: prefer local, then cheapest
+    const local = available.filter((m) => m.provider === "ollama");
+    const cloud = available.filter((m) => m.provider !== "ollama");
 
-    // Local-first policy
-    if (this.cfg.localFirst && local.length > 0) {
-      const chosen = pickBestLocal(local, task);
-      const alts = [...local.filter((m) => m.id !== chosen.id), ...cloud].slice(0, 5);
-      return {
-        modelId: chosen.id,
-        provider: chosen.provider,
-        reason: `local-first: selected free local model for ${task.modality}`,
-        alternatives: alts.map((m) => ({
-          modelId: m.id,
-          provider: m.provider,
-          reason: m.costPer1MTokensUsd === 0 ? 'local alternative' : 'cloud fallback',
-        })),
-      };
+    let chosen: ModelSpec;
+    let reason: string;
+
+    if (this.config.policy === "local-first" && local.length > 0) {
+      chosen = local[0];
+      reason = `Local model (${this.config.policy})`;
+    } else if (cloud.length > 0) {
+      chosen = cloud[0];
+      reason = `Cloud model (${this.config.policy})`;
+    } else {
+      chosen = available[0];
+      reason = "Default selection";
     }
 
-    // Otherwise cheapest wins (simple baseline)
-    const chosen = [...candidates].sort((a, b) => a.costPer1MTokensUsd - b.costPer1MTokensUsd)[0];
-    const alts = candidates.filter((m) => m.id !== chosen.id).slice(0, 5);
+    const alternatives = available
+      .filter((m) => m.id !== chosen.id)
+      .slice(0, 3)
+      .map((m) => ({
+        modelId: m.id,
+        provider: m.provider,
+        reason: `${m.id} (${m.costPer1MTokensUsd === 0 ? "free" : `$${m.costPer1MTokensUsd}/1M tokens`})`,
+      }));
+
     return {
       modelId: chosen.id,
       provider: chosen.provider,
-      reason: 'selected lowest-cost compatible model',
-      alternatives: alts.map((m) => ({ modelId: m.id, provider: m.provider, reason: 'alternative' })),
+      reason,
+      alternatives,
     };
   }
-}
-
-function pickBestLocal(models: ModelSpec[], task: Task): ModelSpec {
-  // Phase 1 heuristic: quality hint influences selection if we have notes.
-  // For now, just pick the first deterministically (stable).
-  // Later: integrate Verdict scores + hardware info.
-  void task;
-  return models[0];
 }

@@ -1,40 +1,55 @@
-#!/usr/bin/env node
+import { parseArgs } from "util";
+import { routeCommand } from "./cli-route.js";
+import { runCommand } from "./cli-run.js";
 
-import { Command } from 'commander';
-import chalk from 'chalk';
-import { Router } from './core/router.js';
-import type { ModelSpec, Task } from './core/types.js';
+const { values, positionals } = parseArgs({
+  options: {
+    model: { type: "string", short: "m" },
+    provider: { type: "string", short: "p" },
+    fast: { type: "boolean", default: false },
+  },
+  allowPositionals: true,
+});
 
-const program = new Command();
+const command = positionals[0];
+const prompt = positionals.slice(1).join(" ");
 
-const DEFAULT_MODELS: ModelSpec[] = [
-  { id: 'qwen2.5-coder:32b', provider: 'ollama', modalities: ['text'], costPer1MTokensUsd: 0 },
-  { id: 'llama3.2-vision:90b', provider: 'ollama', modalities: ['vision'], costPer1MTokensUsd: 0 },
-  { id: 'gpt-4.1-mini', provider: 'openai_compatible', modalities: ['text'], costPer1MTokensUsd: 0.15 },
-];
+if (!command) {
+  console.error("Usage: localbydefault <command> [options]");
+  console.error("");
+  console.error("Commands:");
+  console.error("  route <prompt>   Show routing decision for prompt");
+  console.error("  run <prompt>    Route and execute prompt");
+  console.error("");
+  console.error("Options:");
+  console.error("  --model, -m <model>     Specify model to use");
+  console.error("  --provider, -p <prov> Specify provider (ollama, openai)");
+  console.error("  --fast                   Prefer fastest model");
+  process.exit(1);
+}
 
-program
-  .name('localbydefault')
-  .description('Local-first model orchestration')
-  .version('0.1.0');
-
-program
-  .command('route')
-  .description('Route a task to the best model')
-  .requiredOption('-p, --prompt <prompt>', 'Task prompt')
-  .option('-m, --modality <modality>', 'text|vision', 'text')
-  .action((opts) => {
-    const router = new Router(DEFAULT_MODELS, { localFirst: true });
-    const task: Task = { prompt: String(opts.prompt), modality: opts.modality } as any;
-    const decision = router.route(task);
-
-    console.log(chalk.bold('\nlocalbydefault route\n'));
-    console.log(`${chalk.cyan('model:')} ${decision.modelId}`);
-    console.log(`${chalk.cyan('provider:')} ${decision.provider}`);
-    console.log(`${chalk.cyan('reason:')} ${decision.reason}`);
-    if (decision.alternatives.length) {
-      console.log(chalk.dim(`alternatives: ${decision.alternatives.map(a => a.modelId).join(', ')}`));
+switch (command) {
+  case "route": {
+    if (!prompt) {
+      console.error("Usage: localbydefault route <prompt>");
+      process.exit(1);
     }
-  });
-
-program.parse();
+    await routeCommand(prompt, { model: values.model, provider: values.provider });
+    break;
+  }
+  case "run": {
+    if (!prompt) {
+      console.error("Usage: localbydefault run <prompt>");
+      process.exit(1);
+    }
+    await runCommand(prompt, {
+      model: values.model,
+      provider: values.provider,
+      fast: values.fast,
+    });
+    break;
+  }
+  default:
+    console.error(`Unknown command: ${command}`);
+    process.exit(1);
+}
