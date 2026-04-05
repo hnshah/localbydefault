@@ -9,6 +9,7 @@ import { metricsCommand } from "./cli-metrics.js";
 import { statsCommand } from "./cli-stats.js";
 import { compareCommand } from "./cli-compare.js";
 import { startApi } from "./cli-api.js";
+import { startMcpServer } from "./cli-mcp.js";
 
 const { values, positionals } = parseArgs({
   options: {
@@ -21,6 +22,7 @@ const { values, positionals } = parseArgs({
     recent: { type: "string", short: "n" },
     summary: { type: "boolean", short: "s", default: false },
     port: { type: "string", short: "P" },
+    socket: { type: "string", short: "s" },
   },
   allowPositionals: true,
 });
@@ -38,6 +40,7 @@ Commands:
   route <prompt>     Show routing decision for prompt
   run <prompt>       Route and execute prompt
   serve              Start REST API server
+  mcp                Start MCP server (Model Context Protocol)
   evaluate           Run evaluation tasks
   compare            Compare routing strategies
   health             Check provider health
@@ -56,11 +59,13 @@ Options:
   --recent, -n <n>        Show recent n executions
   --summary, -s           Show summary stats
   --port, -P <port>       API server port (default: 3000)
+  --socket, -S <path>     MCP socket path (default: /tmp/localbydefault-mcp.sock)
 
 Examples:
   localbydefault route "write a function"
   localbydefault run "hello world"
   localbydefault serve --port 3000
+  localbydefault mcp --socket /tmp/mcp.sock
   localbydefault evaluate --count 10
   localbydefault compare
   localbydefault health
@@ -91,6 +96,10 @@ Examples:
     }
     case "serve": {
       await startApi({ port: values.port ? parseInt(values.port, 10) : undefined });
+      break;
+    }
+    case "mcp": {
+      await startMcpServer({ socketPath: values.socket });
       break;
     }
     case "evaluate": {
