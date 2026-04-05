@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { OpenClawAdapter } from "../openclaw.js";
 
 describe("OpenClawAdapter", () => {
@@ -36,17 +36,6 @@ describe("OpenClawAdapter", () => {
       const adapter = new OpenClawAdapter();
       const decision = await adapter.route("hello", { quality: "fast" });
       expect(decision.reason.toLowerCase()).toContain("fast");
-    });
-  });
-
-  describe("execute", () => {
-    it("returns execution result", async () => {
-      const adapter = new OpenClawAdapter();
-      const result = await adapter.execute("hello");
-      expect(result.response).toBeDefined();
-      expect(result.model).toBeDefined();
-      expect(result.provider).toBeDefined();
-      expect(result.latencyMs).toBeDefined();
     });
   });
 

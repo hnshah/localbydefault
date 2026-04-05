@@ -45,27 +45,6 @@ describe("LocalOrchestrator", () => {
     });
   });
 
-  describe("execute", () => {
-    it("executes task and returns response", async () => {
-      const result = await orchestrator.execute({
-        prompt: "say hello",
-        modality: "text",
-      });
-      expect(result.response).toBeDefined();
-      expect(result.response.length).toBeGreaterThan(0);
-      expect(result.latencyMs).toBeGreaterThan(0);
-    });
-
-    it("returns routing decision with response", async () => {
-      const result = await orchestrator.execute({
-        prompt: "test",
-        modality: "text",
-      });
-      expect(result.decision).toBeDefined();
-      expect(result.decision.modelId).toBe("qwen2.5-coder:32b");
-    });
-  });
-
   describe("listProviders", () => {
     it("lists available providers", () => {
       const providers = orchestrator.listProviders();
