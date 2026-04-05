@@ -8,7 +8,10 @@ echo "== localbydefault smoke =="
 echo "config: ${CONFIG_PATH}"
 
 # Start server in background
-node dist/cli.js serve -c "${CONFIG_PATH}" >/tmp/localbydefault-smoke.log 2>&1 &
+# NOTE: The CLI has two servers: `serve` (orchestrator API on 3000 by default)
+# and the OpenAI-compatible proxy (in src/server/) which exposes /v1/* endpoints.
+# Dogfood uses the proxy.
+node dist/server/index.js "${CONFIG_PATH}" >/tmp/localbydefault-smoke.log 2>&1 &
 PID=$!
 
 cleanup() {
@@ -31,6 +34,14 @@ curl -sS -X POST "http://localhost:${PORT}/v1/cloud/chat/completions" \
   -H 'Content-Type: application/json' \
   -d '{"model":"gpt-4o-mini","messages":[{"role":"user","content":"Say only: ok"}]}' \
   | head -c 200 || true
+
+echo
+echo "-- stats"
+curl -sS "http://localhost:${PORT}/v1/stats" | head -c 400 || true
+
+echo
+echo "-- recent audit"
+curl -sS "http://localhost:${PORT}/v1/audit?limit=5" | head -c 800 || true
 
 echo
 echo "-- done; log at /tmp/localbydefault-smoke.log"

@@ -34,7 +34,7 @@ export class SqliteCliAuditLog implements AuditLog {
 
     // Back-compat: older DBs may not have `reason`
     try {
-      await this.execSql(`ALTER TABLE audit_events ADD COLUMN reason TEXT;`);
+      await this.execSql(`ALTER TABLE audit_events ADD COLUMN reason TEXT NOT NULL DEFAULT '';`);
     } catch {
       // ignore if column already exists
     }
@@ -97,7 +97,7 @@ export class SqliteCliAuditLog implements AuditLog {
         provider: provider as AuditEvent['provider'],
         cloudPolicy: cloud_policy as AuditEvent['cloudPolicy'],
         blocked: (Number(blocked || '0') ? 1 : 0) as 0 | 1,
-        reason: (reason || 'upstream_error') as AuditEvent['reason'],
+        reason: ((reason ?? '') || 'upstream_error') as AuditEvent['reason'],
       }));
     }
   }
@@ -123,6 +123,7 @@ export class SqliteCliAuditLog implements AuditLog {
   async statsByReason(limit = 100): Promise<Array<{ reason: string; count: number }>> {
     const sql = `SELECT reason, COUNT(1) as count
       FROM audit_events
+      WHERE reason IS NOT NULL AND reason != ''
       GROUP BY reason
       ORDER BY count DESC
       LIMIT ${Math.max(1, Math.min(limit, 500))};`;
