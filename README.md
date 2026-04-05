@@ -2,130 +2,95 @@
 
 Local-first model orchestration: run local by default, fall back to cloud when needed.
 
-- **Domains:** localbydefault.com / localbydefault.ai / localbydefault.dev
-- **Status:** MVP (in progress)
-
-## What it is
-
-**localbydefault** is an AI-native control plane for orchestrating a fleet of local models (Ollama/MLX/vLLM) with a cloud model as the "brain". It routes tasks to the cheapest model that can do the job, escalates to cloud when necessary, and learns over time via evaluation.
-
-### Core principles
-
-- **Local-first routing:** default to free/low-cost local inference
-- **Cloud escalation:** use cloud only when the task demands it (quality, multimodal, latency)
-- **Harness-first:** integrates deeply with OpenClaw first, but remains harness-agnostic
-- **API/MCP-first:** all capabilities exposed via APIs for agents/tools to call
-- **Measurable:** cost, latency, and quality are tracked
+**Status:** v0.5 - MVP+ (REST API + MCP server)
 
 ## Quick Start
 
 ```bash
-# Install
 npm install
-
-# Build
 npm run build
-
-# Route a prompt (show decision without executing)
-npx localbydefault route "write a hello world function"
-
-# Run a prompt (route + execute)
-npx localbydefault run "hello world"
-
-# Check provider health
-npx localbydefault health
-
-# Show configuration
-npx localbydefault config
-
-# Create config file
-npx localbydefault init
+npx localbydefault route "hello"
 ```
 
 ## CLI Commands
 
 | Command | Description |
 |---------|-------------|
-| `route <prompt>` | Show routing decision for prompt |
-| `run <prompt>` | Route and execute prompt |
-| `health` | Check provider health status |
-| `config` | Show current configuration |
-| `init` | Create default config file |
+| `route <prompt>` | Show routing decision |
+| `run <prompt>` | Route and execute |
+| `serve` | Start REST API server |
+| `mcp` | Start MCP server |
+| `evaluate` | Run evaluation tasks |
+| `compare` | Compare routing strategies |
+| `health` | Check provider health |
+| `metrics` | Show execution metrics |
+| `config` | Show configuration |
 
 ### Options
 
 | Flag | Description |
 |------|-------------|
-| `--fast, -f` | Prefer fastest/smallest model |
-| `--best, -b` | Prefer best quality model |
-| `--model, -m` | Specify model to use |
-| `--provider, -p` | Specify provider (ollama, openai) |
+| `--fast, -f` | Prefer fastest model |
+| `--best, -b` | Prefer best quality |
+| `--port, -P` | API server port |
+| `--policy` | Routing policy |
+
+## REST API
+
+```bash
+localbydefault serve --port 3000
+```
+
+```bash
+# Health check
+curl http://localhost:3000/health
+
+# Route decision
+curl -X POST http://localhost:3000/route \
+  -H 'Content-Type: application/json' \
+  -d '{"prompt":"hello"}'
+
+# Execute
+curl -X POST http://localhost:3000/execute \
+  -H 'Content-Type: application/json' \
+  -d '{"prompt":"What is 1+1?"}'
+```
+
+## MCP Server
+
+```bash
+localbydefault mcp --socket /tmp/localbydefault-mcp.sock
+```
+
+Tools: `route`, `execute`, `health`, `list_providers`
+
+## Providers
+
+| Provider | Type | Cost |
+|----------|------|------|
+| Ollama | Local | Free |
+| OpenAI | Cloud | $0.15/1M |
+| Anthropic | Cloud | $0.80/1M |
+| OpenRouter | Multi | Varies |
 
 ## Configuration
 
-Create `localbydefault.json` to customize behavior:
+Create `localbydefault.json`:
 
 ```json
 {
   "models": [
-    { "id": "qwen2.5-coder:32b", "provider": "ollama", "modalities": ["text"], "costPer1MTokensUsd": 0 },
-    { "id": "gpt-4o-mini", "provider": "openai_compatible", "modalities": ["text", "vision"], "costPer1MTokensUsd": 0.15 }
+    { "id": "qwen2.5-coder:32b", "provider": "ollama", "modalities": ["text"], "costPer1MTokensUsd": 0 }
   ],
   "defaultPolicy": "local-first"
 }
 ```
 
-### Routing Policies
+## Routing Policies
 
-- `local-first` (default) - Prefer free local models
-- `cloud-first` - Prefer cloud models
-- `best-quality` - Prefer most capable model regardless of cost
-
-## Architecture
-
-```
-┌─────────────────────────────────────────────────────┐
-│                      CLI                              │
-├─────────────────────────────────────────────────────┤
-│              LocalOrchestrator                        │
-│  ┌─────────────┐  ┌─────────────┐                  │
-│  │   Router     │  │  Providers  │                  │
-│  │  (routing)   │  │  (execution) │                  │
-│  └─────────────┘  └─────────────┘                  │
-│                         │                            │
-│         ┌───────────────┼───────────────┐           │
-│         ▼               ▼               ▼           │
-│   ┌──────────┐   ┌──────────┐   ┌──────────┐      │
-│   │  Ollama  │   │  OpenAI  │   │  Health  │      │
-│   │ Provider │   │ Provider │   │  Checker │      │
-│   └──────────┘   └──────────┘   └──────────┘      │
-└─────────────────────────────────────────────────────┘
-```
-
-## Roadmap
-
-### MVP (v0.1) ✅
-- [x] Rule-based router (task → provider/model)
-- [x] Providers: Ollama + OpenAI-compatible HTTP endpoints
-- [x] Harness adapter: OpenClaw `sessions_spawn`
-- [x] Multimodal task typing (vision vs text)
-- [x] CLI for local testing
-
-### v0.2
-- [ ] Policy packs (coding, research, vision)
-- [ ] Per-task cost+latency logging
-- [ ] Pluggable evaluation hooks (Verdict)
-
-### v0.3+
-- [ ] Learning loop (auto-adjust routing based on eval outcomes)
-- [ ] More providers (MLX, vLLM)
-- [ ] Web UI dashboard (optional)
-
-## Why it matters
-
-Cloud models are expensive and increasingly unstable under load. Local models are now "good enough" for a large slice of work.
-
-localbydefault makes **hybrid inference** the default: use local models like a boss, and keep cloud as a strategic escalation.
+- `local-first` - Prefer free local models
+- `cloud-first` - Prefer cloud models  
+- `best-quality` - Prefer most capable
 
 ## License
 
