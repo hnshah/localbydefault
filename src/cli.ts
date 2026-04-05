@@ -3,6 +3,7 @@ import { parseArgs } from "util";
 import { routeCommand } from "./cli-route.js";
 import { runCommand } from "./cli-run.js";
 import { initCommand, configCommand } from "./cli-config.js";
+import { healthCommand } from "./cli-health.js";
 
 const { values, positionals } = parseArgs({
   options: {
@@ -26,6 +27,7 @@ Usage: localbydefault <command> [options]
 Commands:
   route <prompt>     Show routing decision for prompt
   run <prompt>       Route and execute prompt
+  health             Check provider health
   init               Create default config file
   config             Show current configuration
 
@@ -39,7 +41,7 @@ Examples:
   localbydefault route "write a function"
   localbydefault run "hello world"
   localbydefault run --fast "simple greeting"
-  localbydefault run --best "complex analysis"
+  localbydefault health
   localbydefault config`);
     process.exit(1);
   }
@@ -53,11 +55,7 @@ Examples:
         console.error("Usage: localbydefault route <prompt>");
         process.exit(1);
       }
-      await routeCommand(prompt, {
-        model: values.model,
-        provider: values.provider,
-        quality,
-      });
+      await routeCommand(prompt, { model: values.model, provider: values.provider, quality });
       break;
     }
     case "run": {
@@ -66,11 +64,11 @@ Examples:
         console.error("Usage: localbydefault run <prompt>");
         process.exit(1);
       }
-      await runCommand(prompt, {
-        model: values.model,
-        provider: values.provider,
-        quality,
-      });
+      await runCommand(prompt, { model: values.model, provider: values.provider, quality });
+      break;
+    }
+    case "health": {
+      await healthCommand();
       break;
     }
     case "init": {

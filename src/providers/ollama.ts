@@ -39,12 +39,21 @@ export class OllamaProvider implements Provider {
       },
       latencyMs,
       tokens: data.eval_count,
-      cost: 0, // Local models are free
+      cost: 0,
       provider: this.id,
     };
   }
 
   isAvailable(): boolean {
-    return true;
+    return true; // Will be checked via chat
+  }
+
+  async ping(): Promise<boolean> {
+    try {
+      const response = await fetch(`${this.baseUrl}/tags`);
+      return response.ok;
+    } catch {
+      return false;
+    }
   }
 }

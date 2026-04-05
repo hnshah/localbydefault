@@ -60,12 +60,24 @@ export class OpenAIProvider implements Provider {
       },
       latencyMs,
       tokens: usage.completion_tokens,
-      cost: (usage.prompt_tokens + usage.completion_tokens) / 1_000_000 * 0.15, // Approximate
+      cost: (usage.prompt_tokens + usage.completion_tokens) / 1_000_000 * 0.15,
       provider: this.id,
     };
   }
 
   isAvailable(): boolean {
     return !!this.apiKey;
+  }
+
+  async ping(): Promise<boolean> {
+    if (!this.apiKey) return false;
+    try {
+      const response = await fetch(`${this.baseUrl}/models`, {
+        headers: { Authorization: `Bearer ${this.apiKey}` },
+      });
+      return response.ok;
+    } catch {
+      return false;
+    }
   }
 }

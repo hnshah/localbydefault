@@ -2,6 +2,7 @@ import type { Task, RouteDecision, Provider, ChatMessage } from "./types.js";
 import { Router } from "./router.js";
 import { OllamaProvider } from "../providers/ollama.js";
 import { OpenAIProvider } from "../providers/openai.js";
+import { checkAllProviders, type HealthStatus } from "./health.js";
 
 export interface OrchestratorConfig {
   policy?: "local-first" | "cloud-first" | "best-quality";
@@ -12,6 +13,7 @@ export interface OrchestratorConfig {
 export class LocalOrchestrator {
   private router: Router;
   private providers: Map<string, Provider> = new Map();
+  private healthStatus: Map<string, HealthStatus> = new Map();
 
   constructor(config: OrchestratorConfig = {}) {
     // Initialize providers
@@ -55,17 +57,39 @@ export class LocalOrchestrator {
 
     try {
       const result = await provider.chat(decision.modelId, messages);
+      
+      // Update health status
+      this.healthStatus.set(decision.provider, {
+        provider: decision.provider,
+        healthy: true,
+        latencyMs: result.latencyMs,
+      });
+
       return {
         response: result.message.content,
         decision,
         latencyMs: result.latencyMs,
       };
     } catch (error) {
+      // Mark provider unhealthy
+      this.healthStatus.set(decision.provider, {
+        provider: decision.provider,
+        healthy: false,
+        error: error instanceof Error ? error.message : String(error),
+      });
+
       // If local fails, try cloud fallback
       if (decision.provider === "ollama" && this.providers.has("openai_compatible")) {
-        console.log("Ollama failed, falling back to OpenAI...");
+        console.log("Ollama unavailable, falling back to OpenAI...");
         const cloudProvider = this.providers.get("openai_compatible")!;
         const cloudResult = await cloudProvider.chat("gpt-4o-mini", messages);
+        
+        this.healthStatus.set("openai_compatible", {
+          provider: "openai_compatible",
+          healthy: true,
+          latencyMs: cloudResult.latencyMs,
+        });
+
         return {
           response: cloudResult.message.content,
           decision: {
@@ -81,8 +105,14 @@ export class LocalOrchestrator {
     }
   }
 
-  listProviders(): string[] {
-    return Array.from(this.providers.keys());
+  async healthCheck(): Promise<HealthStatus[]> {
+    const statuses = await checkAllProviders(this.providers);
+    statuses.forEach((s) => this.healthStatus.set(s.provider, s));
+    return statuses;
+  }
+
+  getHealthStatus(): HealthStatus[] {
+    return Array.from(this.healthStatus.values());
   }
 }
 
