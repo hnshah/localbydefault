@@ -5,6 +5,7 @@ import { runCommand } from "./cli-run.js";
 import { initCommand, configCommand } from "./cli-config.js";
 import { healthCommand } from "./cli-health.js";
 import { evaluateCommand } from "./cli-evaluate.js";
+import { metricsCommand } from "./cli-metrics.js";
 
 const { values, positionals } = parseArgs({
   options: {
@@ -14,6 +15,8 @@ const { values, positionals } = parseArgs({
     best: { type: "boolean", short: "b", default: false },
     count: { type: "string", short: "c" },
     policy: { type: "string" },
+    recent: { type: "string", short: "n" },
+    summary: { type: "boolean", short: "s", default: false },
   },
   allowPositionals: true,
 });
@@ -32,6 +35,7 @@ Commands:
   run <prompt>       Route and execute prompt
   evaluate           Run evaluation tasks
   health             Check provider health
+  metrics            Show execution metrics
   init               Create default config file
   config             Show current configuration
 
@@ -42,12 +46,15 @@ Options:
   --best, -b              Prefer best quality model
   --count, -c <n>         Number of eval tasks (default: 5)
   --policy <policy>       Routing policy (local-first, cloud-first, best-quality)
+  --recent, -n <n>        Show recent n executions
+  --summary, -s           Show summary stats
 
 Examples:
   localbydefault route "write a function"
   localbydefault run "hello world"
-  localbydefault run --fast "simple greeting"
   localbydefault evaluate --count 10
+  localbydefault metrics --summary
+  localbydefault metrics --recent 20
   localbydefault health
   localbydefault config`);
     process.exit(1);
@@ -84,6 +91,13 @@ Examples:
     }
     case "health": {
       await healthCommand();
+      break;
+    }
+    case "metrics": {
+      await metricsCommand({
+        recent: values.recent ? parseInt(values.recent, 10) : undefined,
+        summary: values.summary,
+      });
       break;
     }
     case "init": {

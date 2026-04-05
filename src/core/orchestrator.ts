@@ -2,25 +2,27 @@ import type { Task, RouteDecision, Provider, ChatMessage } from "./types.js";
 import { Router } from "./router.js";
 import { OllamaProvider } from "../providers/ollama.js";
 import { OpenAIProvider } from "../providers/openai.js";
-import { checkAllProviders, type HealthStatus } from "./health.js";
+import { getMetricsLogger, type HealthStatus } from "./metrics.js";
+import { checkAllProviders } from "./health.js";
 
 export interface OrchestratorConfig {
   policy?: "local-first" | "cloud-first" | "best-quality";
   openaiApiKey?: string;
   openaiModel?: string;
+  enableMetrics?: boolean;
 }
 
 export class LocalOrchestrator {
   private router: Router;
   private providers: Map<string, Provider> = new Map();
-  private healthStatus: Map<string, HealthStatus> = new Map();
+  private enableMetrics: boolean;
 
   constructor(config: OrchestratorConfig = {}) {
-    // Initialize providers
+    this.enableMetrics = config.enableMetrics ?? true;
+
     const ollama = new OllamaProvider();
     this.providers.set("ollama", ollama);
 
-    // Add OpenAI if key is available
     if (config.openaiApiKey || process.env.OPENAI_API_KEY) {
       const openai = new OpenAIProvider({
         apiKey: config.openaiApiKey ?? process.env.OPENAI_API_KEY,
@@ -29,7 +31,6 @@ export class LocalOrchestrator {
       this.providers.set("openai_compatible", openai);
     }
 
-    // Initialize router
     const providerIds = Array.from(this.providers.keys()) as ("ollama" | "openai_compatible")[];
     this.router = new Router({
       providers: providerIds,
@@ -57,13 +58,18 @@ export class LocalOrchestrator {
 
     try {
       const result = await provider.chat(decision.modelId, messages);
-      
-      // Update health status
-      this.healthStatus.set(decision.provider, {
-        provider: decision.provider,
-        healthy: true,
-        latencyMs: result.latencyMs,
-      });
+
+      if (this.enableMetrics) {
+        getMetricsLogger().log({
+          task: task.prompt.substring(0, 100),
+          model: decision.modelId,
+          provider: decision.provider,
+          latencyMs: result.latencyMs,
+          success: true,
+          tokens: result.tokens,
+          cost: result.cost,
+        });
+      }
 
       return {
         response: result.message.content,
@@ -71,25 +77,21 @@ export class LocalOrchestrator {
         latencyMs: result.latencyMs,
       };
     } catch (error) {
-      // Mark provider unhealthy
-      this.healthStatus.set(decision.provider, {
-        provider: decision.provider,
-        healthy: false,
-        error: error instanceof Error ? error.message : String(error),
-      });
+      if (this.enableMetrics) {
+        getMetricsLogger().log({
+          task: task.prompt.substring(0, 100),
+          model: decision.modelId,
+          provider: decision.provider,
+          latencyMs: 0,
+          success: false,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
 
-      // If local fails, try cloud fallback
       if (decision.provider === "ollama" && this.providers.has("openai_compatible")) {
         console.log("Ollama unavailable, falling back to OpenAI...");
         const cloudProvider = this.providers.get("openai_compatible")!;
         const cloudResult = await cloudProvider.chat("gpt-4o-mini", messages);
-        
-        this.healthStatus.set("openai_compatible", {
-          provider: "openai_compatible",
-          healthy: true,
-          latencyMs: cloudResult.latencyMs,
-        });
-
         return {
           response: cloudResult.message.content,
           decision: {
@@ -106,13 +108,11 @@ export class LocalOrchestrator {
   }
 
   async healthCheck(): Promise<HealthStatus[]> {
-    const statuses = await checkAllProviders(this.providers);
-    statuses.forEach((s) => this.healthStatus.set(s.provider, s));
-    return statuses;
+    return checkAllProviders(this.providers);
   }
 
-  getHealthStatus(): HealthStatus[] {
-    return Array.from(this.healthStatus.values());
+  listProviders(): string[] {
+    return Array.from(this.providers.keys());
   }
 }
 
