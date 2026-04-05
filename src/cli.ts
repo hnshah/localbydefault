@@ -12,6 +12,7 @@ import { startApi } from "./cli-api.js";
 import { startMcpServer } from "./cli-mcp.js";
 import { startTui } from "./cli-tui.js";
 import { startWebhookServer } from "./cli-webhook.js";
+import { startProxy } from "./cli-proxy.js";
 
 const { values, positionals } = parseArgs({
   options: {
@@ -41,6 +42,7 @@ Usage: localbydefault <command> [options]
 Commands:
   route <prompt>     Show routing decision
   run <prompt>      Route and execute
+  proxy             Start OpenAI-compatible proxy (/v1/*)
   serve             Start REST API server
   mcp               Start MCP server
   tui               Start interactive TUI
@@ -67,6 +69,7 @@ Examples:
   localbydefault route "write a function"
   localbydefault run "hello world"
   localbydefault tui
+  localbydefault proxy /path/to/config.yaml
   localbydefault serve --port 3000
   localbydefault webhook --port 3001
   localbydefault mcp --socket /tmp/mcp.sock`);
@@ -96,6 +99,15 @@ Examples:
     }
     case "serve": {
       await startApi({ port: values.port ? parseInt(values.port, 10) : undefined });
+      break;
+    }
+    case "proxy": {
+      const configPath = args[0];
+      if (!configPath) {
+        console.error("Usage: localbydefault proxy <configPath>");
+        process.exit(1);
+      }
+      await startProxy(configPath);
       break;
     }
     case "mcp": {
