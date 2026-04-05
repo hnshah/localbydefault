@@ -8,6 +8,7 @@ import { evaluateCommand } from "./cli-evaluate.js";
 import { metricsCommand } from "./cli-metrics.js";
 import { statsCommand } from "./cli-stats.js";
 import { compareCommand } from "./cli-compare.js";
+import { startApi } from "./cli-api.js";
 
 const { values, positionals } = parseArgs({
   options: {
@@ -19,6 +20,7 @@ const { values, positionals } = parseArgs({
     policy: { type: "string" },
     recent: { type: "string", short: "n" },
     summary: { type: "boolean", short: "s", default: false },
+    port: { type: "string", short: "P" },
   },
   allowPositionals: true,
 });
@@ -35,6 +37,7 @@ Usage: localbydefault <command> [options]
 Commands:
   route <prompt>     Show routing decision for prompt
   run <prompt>       Route and execute prompt
+  serve              Start REST API server
   evaluate           Run evaluation tasks
   compare            Compare routing strategies
   health             Check provider health
@@ -52,11 +55,12 @@ Options:
   --policy <policy>       Routing policy (local-first, cloud-first, best-quality)
   --recent, -n <n>        Show recent n executions
   --summary, -s           Show summary stats
+  --port, -P <port>       API server port (default: 3000)
 
 Examples:
   localbydefault route "write a function"
   localbydefault run "hello world"
-  localbydefault run --fast "simple greeting"
+  localbydefault serve --port 3000
   localbydefault evaluate --count 10
   localbydefault compare
   localbydefault health
@@ -83,6 +87,10 @@ Examples:
         process.exit(1);
       }
       await runCommand(prompt, { model: values.model, provider: values.provider, quality });
+      break;
+    }
+    case "serve": {
+      await startApi({ port: values.port ? parseInt(values.port, 10) : undefined });
       break;
     }
     case "evaluate": {
