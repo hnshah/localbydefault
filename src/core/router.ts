@@ -1,21 +1,28 @@
-import type { Task, RouteDecision, ModelSpec, ProviderId } from "./types.js";
+import type { Task, RouteDecision, ProviderId, ModelSpec } from "./types.js";
+import { loadConfig, type Config } from "./config.js";
 
 export interface RouterConfig {
   providers: ProviderId[];
   policy: "local-first" | "cloud-first" | "best-quality";
+  config?: Config;
 }
 
 export class Router {
   private config: RouterConfig;
-  private models: ModelSpec[] = [
-    { id: "qwen2.5-coder:32b", provider: "ollama", modalities: ["text"], costPer1MTokensUsd: 0 },
-    { id: "qwen2.5:32b", provider: "ollama", modalities: ["text"], costPer1MTokensUsd: 0 },
-    { id: "llama3.2-vision:90b", provider: "ollama", modalities: ["text", "vision"], costPer1MTokensUsd: 0 },
-    { id: "gpt-4.1-mini", provider: "openai_compatible", modalities: ["text"], costPer1MTokensUsd: 0.2 },
-  ];
+  private models: ModelSpec[];
 
   constructor(config: RouterConfig) {
     this.config = config;
+    const fullConfig = config.config ?? loadConfig();
+    this.models = fullConfig.models
+      .filter((m) => m.enabled !== false)
+      .map((m) => ({
+        id: m.id,
+        provider: m.provider,
+        modalities: m.modalities,
+        costPer1MTokensUsd: m.costPer1MTokensUsd,
+        notes: m.notes,
+      }));
   }
 
   route(task: Task): RouteDecision {
@@ -25,27 +32,40 @@ export class Router {
       throw new Error(`No model available for modality: ${task.modality}`);
     }
 
-    // Simple routing: prefer local, then cheapest
-    const local = available.filter((m) => m.provider === "ollama");
-    const cloud = available.filter((m) => m.provider !== "ollama");
-
-    let chosen: ModelSpec;
+    // Sort by policy
+    let sorted: ModelSpec[];
     let reason: string;
 
-    if (this.config.policy === "local-first" && local.length > 0) {
-      chosen = local[0];
-      reason = `Local model (${this.config.policy})`;
-    } else if (cloud.length > 0) {
-      chosen = cloud[0];
-      reason = `Cloud model (${this.config.policy})`;
-    } else {
-      chosen = available[0];
-      reason = "Default selection";
+    switch (this.config.policy) {
+      case "local-first":
+        sorted = [
+          ...available.filter((m) => m.provider === "ollama"),
+          ...available.filter((m) => m.provider !== "ollama"),
+        ];
+        reason = "Local model (local-first)";
+        break;
+      case "cloud-first":
+        sorted = [
+          ...available.filter((m) => m.provider !== "ollama"),
+          ...available.filter((m) => m.provider === "ollama"),
+        ];
+        reason = "Cloud model (cloud-first)";
+        break;
+      case "best-quality":
+        sorted = [...available].sort(
+          (a, b) => b.costPer1MTokensUsd - a.costPer1MTokensUsd
+        );
+        reason = "Best quality (best-quality)";
+        break;
+      default:
+        sorted = available;
+        reason = "Default selection";
     }
 
-    const alternatives = available
-      .filter((m) => m.id !== chosen.id)
-      .slice(0, 3)
+    const chosen = sorted[0];
+
+    const alternatives = sorted
+      .slice(1, 4)
       .map((m) => ({
         modelId: m.id,
         provider: m.provider,
@@ -58,5 +78,9 @@ export class Router {
       reason,
       alternatives,
     };
+  }
+
+  getModels(): ModelSpec[] {
+    return this.models;
   }
 }
