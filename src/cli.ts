@@ -13,6 +13,7 @@ import { startMcpServer } from "./cli-mcp.js";
 import { startTui } from "./cli-tui.js";
 import { startWebhookServer } from "./cli-webhook.js";
 import { startProxy } from "./cli-proxy.js";
+import { dogfood } from "./cli-dogfood.js";
 
 const { values, positionals } = parseArgs({
   options: {
@@ -26,6 +27,8 @@ const { values, positionals } = parseArgs({
     summary: { type: "boolean", short: "s", default: false },
     port: { type: "string", short: "P" },
     socket: { type: "string", short: "S" },
+    base: { type: "string" },
+    cloudModel: { type: "string" },
   },
   allowPositionals: true,
 });
@@ -43,6 +46,7 @@ Commands:
   route <prompt>     Show routing decision
   run <prompt>      Route and execute
   proxy             Start OpenAI-compatible proxy (/v1/*)
+  dogfood           Run a quick dogfood script against a running proxy
   serve             Start REST API server
   mcp               Start MCP server
   tui               Start interactive TUI
@@ -70,6 +74,7 @@ Examples:
   localbydefault run "hello world"
   localbydefault tui
   localbydefault proxy /path/to/config.yaml
+  localbydefault dogfood --base http://localhost:4141/v1
   localbydefault serve --port 3000
   localbydefault webhook --port 3001
   localbydefault mcp --socket /tmp/mcp.sock`);
@@ -108,6 +113,15 @@ Examples:
         process.exit(1);
       }
       await startProxy(configPath);
+      break;
+    }
+    case "dogfood": {
+      const baseUrl = values.base ?? "http://localhost:4141/v1";
+      await dogfood({
+        baseUrl,
+        localModel: values.model ?? "qwen2.5-coder:32b",
+        cloudModel: values.cloudModel ?? "gpt-4o-mini",
+      });
       break;
     }
     case "mcp": {
