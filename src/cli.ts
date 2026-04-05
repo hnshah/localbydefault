@@ -4,7 +4,7 @@ import { routeCommand } from "./cli-route.js";
 import { runCommand } from "./cli-run.js";
 import { initCommand, configCommand } from "./cli-config.js";
 import { healthCommand } from "./cli-health.js";
-import { serve } from "./server/index.js";
+import { evaluateCommand } from "./cli-evaluate.js";
 
 const { values, positionals } = parseArgs({
   options: {
@@ -12,7 +12,8 @@ const { values, positionals } = parseArgs({
     provider: { type: "string", short: "p" },
     fast: { type: "boolean", short: "f", default: false },
     best: { type: "boolean", short: "b", default: false },
-    config: { type: "string", short: "c" },
+    count: { type: "string", short: "c" },
+    policy: { type: "string" },
   },
   allowPositionals: true,
 });
@@ -29,23 +30,24 @@ Usage: localbydefault <command> [options]
 Commands:
   route <prompt>     Show routing decision for prompt
   run <prompt>       Route and execute prompt
-  serve              Run OpenAI-compatible proxy server (Ollama-first)
+  evaluate           Run evaluation tasks
   health             Check provider health
   init               Create default config file
   config             Show current configuration
 
 Options:
-  --model, -m <model>      Specify model to use
-  --provider, -p <prov>    Specify provider (ollama, openai)
-  --fast, -f               Prefer fastest model
-  --best, -b               Prefer best quality model
-  --config, -c <path>      (serve) Path to YAML config
+  --model, -m <model>     Specify model to use
+  --provider, -p <prov>   Specify provider (ollama, openai)
+  --fast, -f              Prefer fastest model
+  --best, -b              Prefer best quality model
+  --count, -c <n>         Number of eval tasks (default: 5)
+  --policy <policy>       Routing policy (local-first, cloud-first, best-quality)
 
 Examples:
   localbydefault route "write a function"
   localbydefault run "hello world"
   localbydefault run --fast "simple greeting"
-  localbydefault serve -c ./localbydefault.yaml
+  localbydefault evaluate --count 10
   localbydefault health
   localbydefault config`);
     process.exit(1);
@@ -72,14 +74,12 @@ Examples:
       await runCommand(prompt, { model: values.model, provider: values.provider, quality });
       break;
     }
-    case "serve": {
-      const configPath = values.config;
-      if (!configPath) {
-        console.error("Usage: localbydefault serve -c <config.yaml>");
-        process.exit(1);
-      }
-      const { cfg } = await serve(String(configPath));
-      console.log(`localbydefault server listening on http://localhost:${cfg.port}`);
+    case "evaluate": {
+      await evaluateCommand({
+        count: values.count ? parseInt(values.count, 10) : undefined,
+        quality,
+        policy: values.policy as "local-first" | "cloud-first" | "best-quality" | undefined,
+      });
       break;
     }
     case "health": {
