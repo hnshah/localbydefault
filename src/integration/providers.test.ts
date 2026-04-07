@@ -7,6 +7,8 @@ describe("Provider Integration", () => {
   describe("OllamaProvider", () => {
     it("can chat when Ollama is running", async () => {
       const provider = new OllamaProvider();
+      // Skip in CI if Ollama isn't available.
+      if (!provider.isAvailable()) return;
       const result = await provider.chat("qwen2.5-coder:32b", [
         { role: "user", content: "Say exactly: test" },
       ]);

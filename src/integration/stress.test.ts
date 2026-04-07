@@ -1,8 +1,16 @@
 import { describe, it, expect } from "vitest";
 import { LocalOrchestrator } from "../core/orchestrator.js";
+import { OllamaProvider } from "../providers/ollama.js";
+
+function skipIfNoOllama() {
+  const p = new OllamaProvider();
+  if (!p.isAvailable()) return true;
+  return false;
+}
 
 describe("Stress Tests", () => {
   it("handles rapid consecutive requests", async () => {
+    if (skipIfNoOllama()) return;
     const orchestrator = new LocalOrchestrator({ enableMetrics: false });
     const promises: Promise<any>[] = [];
 
@@ -19,6 +27,7 @@ describe("Stress Tests", () => {
   }, 60000);
 
   it("handles long prompts", async () => {
+    if (skipIfNoOllama()) return;
     const orchestrator = new LocalOrchestrator({ enableMetrics: false });
     const longPrompt = "A".repeat(10000);
 
@@ -31,6 +40,7 @@ describe("Stress Tests", () => {
   }, 60000);
 
   it("handles unicode prompts", async () => {
+    if (skipIfNoOllama()) return;
     const orchestrator = new LocalOrchestrator({ enableMetrics: false });
     const unicodePrompts = [
       "こんにちは",
