@@ -2,7 +2,7 @@ import type { Provider, ProviderId, ChatMessage, ChatResponse } from "../core/ty
 
 export class OllamaProvider implements Provider {
   readonly id: ProviderId = "ollama";
-  private baseUrl = "http://localhost:11434/api";
+  private baseUrl = process.env.OLLAMA_BASE_URL ?? "http://localhost:11434/api";
 
   async chat(model: string, messages: ChatMessage[]): Promise<ChatResponse> {
     const startTime = Date.now();
@@ -45,7 +45,12 @@ export class OllamaProvider implements Provider {
   }
 
   isAvailable(): boolean {
-    return true; // Will be checked via chat
+    // In many environments (CI), Ollama won't be running.
+    // Return false unless explicitly enabled.
+    // For local dev, set OLLAMA_BASE_URL (or ENABLE_OLLAMA=1) and run Ollama.
+    if (process.env.ENABLE_OLLAMA === "1") return true;
+    if (process.env.OLLAMA_BASE_URL) return true;
+    return false;
   }
 
   async ping(): Promise<boolean> {

@@ -4,8 +4,7 @@ import { OllamaProvider } from "../providers/ollama.js";
 
 function skipIfNoOllama() {
   const p = new OllamaProvider();
-  if (!p.isAvailable()) return true;
-  return false;
+  return !p.isAvailable();
 }
 
 describe("Stress Tests", () => {
