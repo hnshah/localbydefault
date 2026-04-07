@@ -13,6 +13,7 @@ import { startMcpServer } from "./cli-mcp.js";
 import { startTui } from "./cli-tui.js";
 import { startWebhookServer } from "./cli-webhook.js";
 import { startProxy } from "./cli-proxy.js";
+import { proxyStatus, proxyStop, startProxyDaemon } from "./cli-proxy.js";
 import { dogfood } from "./cli-dogfood.js";
 
 const { values, positionals } = parseArgs({
@@ -46,6 +47,9 @@ Commands:
   route <prompt>     Show routing decision
   run <prompt>      Route and execute
   proxy             Start OpenAI-compatible proxy (/v1/*)
+  proxy-start       Start proxy as a background daemon (writes pidfile/logfile)
+  proxy-status      Check daemon status
+  proxy-stop        Stop daemon
   dogfood           Run a quick dogfood script against a running proxy
   serve             Start REST API server
   mcp               Start MCP server
@@ -74,6 +78,9 @@ Examples:
   localbydefault run "hello world"
   localbydefault tui
   localbydefault proxy /path/to/config.yaml
+  localbydefault proxy-start /path/to/config.yaml
+  localbydefault proxy-status
+  localbydefault proxy-stop
   localbydefault dogfood --base http://localhost:4141/v1
   localbydefault serve --port 3000
   localbydefault webhook --port 3001
@@ -113,6 +120,26 @@ Examples:
         process.exit(1);
       }
       await startProxy(configPath);
+      break;
+    }
+    case "proxy-start": {
+      const configPath = args[0];
+      if (!configPath) {
+        console.error("Usage: localbydefault proxy-start <configPath>");
+        process.exit(1);
+      }
+      const out = await startProxyDaemon(configPath);
+      console.log(JSON.stringify(out, null, 2));
+      break;
+    }
+    case "proxy-status": {
+      const out = await proxyStatus();
+      console.log(JSON.stringify(out, null, 2));
+      break;
+    }
+    case "proxy-stop": {
+      const out = await proxyStop();
+      console.log(JSON.stringify(out, null, 2));
       break;
     }
     case "dogfood": {
